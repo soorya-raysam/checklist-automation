@@ -5,9 +5,11 @@ import ProductDashboard from "./pages/ProductDashboard";
 import SectionDetails from "./pages/SectionDetails";
 import CertificateDetails from "./components/CertificateDetails";
 import TrunkDetails from "./pages/TrunkDetails";
-import TrunkMonitorTable from "./pages/TrunkMonitorTable";
+// import TrunkMonitorTable from "./pages/TrunkMonitorTable";
 import TrunkGroupTable from "./pages/TrunkGroupTable";
 import RegionDashboard from "./pages/RegionDashboard";
+import TrunkCommandView from "./pages/TrunkCommandView";
+import CommandHistory from "./pages/CommandHistory";
 
 
 function App() {
@@ -25,17 +27,24 @@ function App() {
         <Route path="/dashboard/:product" element={<ProductDashboard />} />
         <Route path="/details/:product/Certificates" element={<CertificateDetails />} />
         <Route path="/trunk-details/:product" element={<TrunkDetails />} />
+{/* <Route path="/trunk-details/:product/:title" element={<TrunkDetails />} /> */}
+<Route path="/trunk-command/:product/:title" element={<TrunkCommandView />} />
+
+<Route path="/command-history" element={<CommandHistory />} />
+
+
+
         {/* <Route
               path="/trunk-details/:product/:section"
               element={<div style={{ padding: "40px", color: "#fff" }}>Trunk Detail Page - Coming Soon</div>}/> */}
 
 
-               <Route
+               {/* <Route
   path="/trunk-details/:product/list trunk-group"
   element={<TrunkGroupTable />}
-/>
+/> */}
 
-        <Route path="/trunk-details/:product/:title" element={<TrunkMonitorTable />} />
+        {/* <Route path="/trunk-details/:product/:title" element={<TrunkMonitorTable />} /> */}
  
         
         <Route path="/" element={<TableView />} />

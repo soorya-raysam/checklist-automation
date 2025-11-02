@@ -35,11 +35,8 @@ export default function ProductDashboard() {
   const [refreshTimer, setRefreshTimer] = useState(30);
 
   const fetchData = () => {
-    fetch(
-      product === "Avaya Session Border Controller"
-        ? "/asbc_health_snapshot.json"
-        : "/health_snapshot.json"
-    )
+    setLoading(true);
+    fetch("http://localhost:5002/get-health-data")
       .then((res) => res.json())
       .then((json) => {
         setData(json);
@@ -51,6 +48,8 @@ export default function ProductDashboard() {
         setLoading(false);
       });
   };
+  
+  
 
   // initial fetch
   useEffect(() => {
@@ -134,104 +133,74 @@ const criticalAlarms = data?.alarms?.summary?.Critical || 0;
   ];
   const COLORS = ["#60a5fa", "#facc15", "#ef4444"];
 
-  const cards = [
-    {
-      title: "System Uptime",
-      status: isSBC
-        ? data?.["System Time"]?.status || "Unknown"
-        : data?.uptime?.status || "Unknown",
-      path: "Uptime",
-      chart: (
-        <div style={{ textAlign: "center" }}>
-          {/* Existing uptime chart */}
-          {/* <ResponsiveContainer width="100%" height={150}>
-            <LineChart data={uptimeData}>
-              <CartesianGrid stroke="#ccc" />
-              <XAxis dataKey="time" />
-              <YAxis />
-              <Tooltip />
-              <Line type="monotone" dataKey="value" stroke="#10b981" />
-            </LineChart>
-          </ResponsiveContainer> */}
-    
-          {/* 🔹 Add uptime days below the chart */}
-          {data?.uptime?.uptime_days !== undefined && (
-            <div
-              style={{
-                marginTop: "6px",
-                fontSize: "3.5rem",
-                fontWeight: "bold",
-                color:
-                  data?.uptime?.status === "Normal"
-                    ? "#00ffa0"
-                    : data?.uptime?.status === "Critical"
-                    ? "#ff0000"
-                    : "#facc15"
-              }}
-            >
-              {data.uptime.uptime_days} Days
-            </div>
-          )}
-        </div>
-      )
-    },
-    ,
-    {
-      title: "Disk Utilisation",
-      status: data?.resources?.cpu?.status || "Normal",
-      path: "Resources",
-      chart: null
-    },
-    {
-      title: "Alarms",
-      status: isSBC
-        ? data?.["Active Alarm"]?.status || "Unknown"
-        : data?.alarms?.status || "Unknown",
-      path: "Alarms",
-      chart: (
-        <ResponsiveContainer width="100%" height={150}>
-          <PieChart>
-            <Pie
-              data={alarmsChartData}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              outerRadius={60}
-              label
-            >
-              {alarmsChartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index]} />
-              ))}
-            </Pie>
-            <Tooltip />
-          </PieChart>
-        </ResponsiveContainer>
-      )
-    },
-    {
-      title: "Certificates",
-      status: data?.certificate?.status || "Unknown",
-      path: "Certificates"
-    },
-    {
-      title: "License",
-      status: isSBC
-        ? data?.["License State"]?.status || "Unknown"
-        : data?.license?.status || "Normal",
-      path: "License"
-    },
-    {
-      title: "Service",
-      status: data?.services?.status || "Normal",
-      path: "Services"
-    },
-    {
-      title: "Backup",
-      status: data?.backup?.status || "Normal",
-      path: "Backup"
-    }
-  ];
+
+
+
+
+const cards = [
+  {
+    title: "System Uptime",
+    // Extract raw uptime text from the Linux sheet
+    value:
+      data?.["Linux"]?.find((row) => row.Command === "uptime")?.Output || "No data",
+    // Determine status
+    status:
+      data?.["Linux"]
+        ?.find((row) => row.Command === "uptime")
+        ?.Output?.match(/up\s+(\d+)\s+days?/)
+        ? "Normal"
+        : "Critical",
+    path: "Uptime",
+  },
+  
+  {
+    title: "Disk Utilisation (df -h)",
+    status: "Normal",
+    path: "Resources",
+    tableData:
+      data?.["Linux"]
+        ?.find((row) => row.Command === "df -h")
+        ?.Output || "No data available",
+  },
+  {
+    title: "Disk Utilisation (df -k)",
+    status: "Normal",
+    path: "Resources",
+    tableData:
+      data?.["Linux"]
+        ?.find((row) => row.Command === "df -k")
+        ?.Output || "No data available",
+  },
+  {
+    title: "Alarms",
+    status: data?.["SAT"]
+      ?.find((c) => c["SAT Command"] === "almdisplay")
+      ?.Output?.match(/CRITICAL|MAJOR|MINOR/i)
+      ? "Warning"
+      : "Normal",
+    path: "Alarms",
+  },
+  {
+    title: "Server Status",
+    status: data?.["SAT"]
+      ?.find((c) => c["SAT Command"] === "statusserver")
+      ?.Output?.match(/running|active/i)
+      ? "Normal"
+      : "Critical",
+    path: "Services",
+  },
+  {
+    title: "Backup",
+    status: data?.["SAT"]
+      ?.find((c) => c["SAT Command"] === "backup -t")
+      ?.Output?.match(/success|complete/i)
+      ? "Normal"
+      : "Critical",
+    path: "Backup",
+  },
+];
+   
+  
 
   const handleCardClick = (section) => {
     const encodedProduct = encodeURIComponent(product);
@@ -327,12 +296,38 @@ const criticalAlarms = data?.alarms?.summary?.Critical || 0;
                     isCritical && !alertSent ? "blinking" : ""
                   }`}
                   onClick={() => handleCardClick(card.path)}
-                  style={{ cursor: "pointer", position: "relative" }}
-                >
+                  style={{ cursor: "pointer", position: "relative" }}>
+
+
+
                   <h2>{card.title}</h2>
-                  <div className={`status-indicator ${getStatusColor(card.status)}`}>
-                    {card.status}
-                  </div>
+
+{/* Show uptime value if it exists */}
+{card.title === "System Uptime" && card.value && (
+  <p
+    style={{
+      color: "#f9fafb",
+      fontSize: "1rem",
+      fontWeight: "500",
+      margin: "6px 0",
+    }}
+  >
+    {
+      // Try to extract "X days" or fallback to full uptime line
+      card.value.match(/up\s+(.+?),\s+\d+\s+user/)
+        ? card.value.match(/up\s+(.+?),\s+\d+\s+user/)[1]
+        : card.value
+    }
+  </p>
+)}
+
+<div className={`status-indicator ${getStatusColor(card.status)}`}>
+  {card.status}
+</div>
+
+
+
+
 
                   {card.chart && <div className="chart-container">{card.chart}</div>}
 
